@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SmartHome AI Monitor — Système de surveillance intelligente IoT ENSA FES">
+<title>SmartHome AI Monitor — ENSA FES</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js?v=4"></script>
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary:    #080c14;
+  --bg-secondary:  #0d1321;
+  --bg-card:       rgba(255, 255, 255, 0.038);
+  --bg-card-hover: rgba(255, 255, 255, 0.058);
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-gold:   rgba(192, 160, 98, 0.3);
+  --gold:          #c0a062;
+  --gold-light:    #e2c07a;
+  --gold-dim:      rgba(192, 160, 98, 0.15);
+  --text-primary:  #f0ece4;
+  --text-secondary:#8a93a8;
+  --text-dim:      #4a5568;
+  --green:         #4ade80;
+  --green-dim:     rgba(74, 222, 128, 0.12);
+  --red:           #f87171;
+  --red-dim:       rgba(248, 113, 113, 0.12);
+  --blue:          #60a5fa;
+  --blue-dim:      rgba(96, 165, 250, 0.1);
+  --amber:         #fbbf24;
+  --amber-dim:     rgba(251, 191, 36, 0.12);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(192,160,98,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 80%, rgba(96,165,250,0.04) 0%, transparent 50%);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ─── ALARM BANNER ─────────────────────────────────────────────────────── */
+#alarm-banner {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: linear-gradient(90deg, #7f1d1d, #991b1b, #7f1d1d);
+  background-size: 200% 100%;
+  animation: alarm-sweep 1s linear infinite;
+  padding: 12px 24px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  color: #fca5a5;
+  border-bottom: 1px solid rgba(248,113,113,0.4);
+}
+#alarm-banner.active { display: flex; align-items: center; justify-content: center; gap: 12px; }
+@keyframes alarm-sweep {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* ─── TOAST NOTIFICATIONS ──────────────────────────────────────────────── */
+#toast-container {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px 18px;
+  min-width: 280px;
+  max-width: 360px;
+  font-size: 0.82rem;
+  pointer-events: all;
+  animation: toast-in 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.alarm { border-left-color: var(--red); }
+.toast.success { border-left-color: var(--green); }
+.toast-title { font-weight: 600; margin-bottom: 3px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+.toast-msg { color: var(--text-primary); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+/* ─── HEADER ───────────────────────────────────────────────────────────── */
+.app-header {
+  padding: 32px 40px 0;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.brand-icon {
+  width: 42px; height: 42px;
+  background: var(--gold-dim);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.brand-icon svg { width: 22px; height: 22px; color: var(--gold); }
+.brand-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.brand-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-top: 1px;
+}
+.header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-dim);
+  transition: all 0.4s;
+}
+.status-dot.connected { background: var(--green); box-shadow: 0 0 0 3px var(--green-dim); }
+.status-dot.error { background: var(--red); box-shadow: 0 0 0 3px var(--red-dim); }
+.badge-tech {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.badge-tech span {
+  font-size: 0.68rem;
+  font-family: 'DM Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+/* ─── LAYOUT ───────────────────────────────────────────────────────────── */
+.main-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 40px;
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.8fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.full-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+/* ─── CARDS ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  transition: background 0.2s, border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(192,160,98,0.2), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.1); }
+.card:hover::before { opacity: 1; }
+
+.card-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.card-label svg { width: 13px; height: 13px; color: var(--gold); opacity: 0.8; }
+
+/* KPI Cards */
+.kpi-value {
+  font-size: 2.8rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.kpi-unit {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.kpi-meta {
+  margin-top: 10px;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.kpi-trend-up   { color: var(--red); }
+.kpi-trend-down { color: var(--blue); }
+.kpi-trend-stable { color: var(--green); }
+
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 10px 0 8px;
+}
+.status-badge.normal { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+.status-badge.anomaly { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.status-badge.pending { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+
+.z-score-bar {
+  margin-top: 10px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.z-score-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--green);
+  transition: width 0.6s ease, background 0.4s;
+  width: 0%;
+}
+
+/* Prediction */
+.pred-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--blue);
+  margin: 8px 0 4px;
+}
+.pred-horizon {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+/* Mini sparkline */
+.sparkline-wrap {
+  margin-top: 12px;
+  height: 40px;
+  position: relative;
+}
+#sparkline { width: 100%; height: 100%; }
+
+/* Relay control */
+.relay-list { display: flex; flex-direction: column; gap: 12px; }
+.relay-item {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.relay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.relay-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px;
+}
+.relay-indicator {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--red);
+  transition: all 0.4s;
+}
+.relay-indicator.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.relay-state-txt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--red);
+  transition: color 0.3s;
+}
+.relay-state-txt.on { color: var(--green); }
+.relay-btns { display: flex; gap: 8px; }
+.btn-relay {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+}
+.btn-relay:hover { transform: translateY(-1px); }
+.btn-relay:active { transform: translateY(0); }
+.btn-relay.on { color: var(--green); border-color: rgba(74,222,128,0.3); }
+.btn-relay.on:hover { background: var(--green-dim); }
+.btn-relay.off { color: var(--red); border-color: rgba(248,113,113,0.3); }
+.btn-relay.off:hover { background: var(--red-dim); }
+
+/* Chart */
+.chart-wrap { height: 220px; position: relative; }
+#main-chart { height: 100% !important; }
+
+/* Event log */
+#event-log {
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#event-log::-webkit-scrollbar { width: 4px; }
+#event-log::-webkit-scrollbar-track { background: transparent; }
+#event-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.log-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.035);
+  font-size: 0.76rem;
+  transition: background 0.15s;
+}
+.log-item:hover { background: rgba(255,255,255,0.02); padding-left: 4px; border-radius: 4px; }
+.log-time {
+  font-family: 'DM Mono', monospace;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.log-msg { color: var(--text-secondary); }
+.log-msg.alarm { color: var(--red); font-weight: 500; }
+.log-msg.success { color: var(--green); }
+.log-msg.gold { color: var(--gold); }
+
+/* Divider */
+.section-divider {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .bottom-row { grid-template-columns: 1fr 1fr; }
+  .full-row { grid-template-columns: 1fr; }
+  .app-header, .main-content { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 640px) {
+  .kpi-row { grid-template-columns: 1fr 1fr; }
+  .bottom-row { grid-template-columns: 1fr; }
+  .header-top { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── ALARM BANNER ────────────────────────────────────────────────────── -->
+<div id="alarm-banner">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <span id="alarm-text">ALERTE — Anomalie thermique détectée</span>
+</div>
+
+<!-- ── TOAST CONTAINER ─────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-top">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">SmartHome AI Monitor</div>
+        <div class="brand-sub">Module IoT — ENSA FES · Pr. Balboul Younes</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="badge-tech">
+        <span>Wokwi ESP32</span>
+        <span>broker.emqx.io</span>
+        <span>Node-RED</span>
+        <span>Python AI</span>
+      </div>
+      <div class="conn-status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="conn-label">Connexion...</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN CONTENT ─────────────────────────────────────────────────────── -->
+<main class="main-content">
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+
+    <!-- Temperature -->
+    <div class="card" id="card-temp">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/>
+        </svg>
+        Température
+      </div>
+      <div class="kpi-value"><span id="temp-val">--</span><span class="kpi-unit"> °C</span></div>
+      <div class="kpi-meta" id="temp-meta">En attente de données...</div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>
+        </svg>
+        Humidité
+      </div>
+      <div class="kpi-value"><span id="hum-val">--</span><span class="kpi-unit"> %</span></div>
+      <div class="kpi-meta" id="hum-meta">En attente de données...</div>
+    </div>
+
+    <!-- AI Anomaly -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+        </svg>
+        Détection IA
+      </div>
+      <div class="status-badge pending" id="anomaly-badge">En attente</div>
+      <div style="margin-top:8px; font-size:0.74rem; color:var(--text-secondary)">Score Z : <span id="z-val" style="font-family:'DM Mono',monospace; color:var(--text-primary)">--</span></div>
+      <div class="z-score-bar"><div class="z-score-fill" id="z-fill"></div></div>
+    </div>
+
+    <!-- Prediction -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Prédiction +5 min
+      </div>
+      <div class="pred-value"><span id="pred-val">--</span> <span style="font-size:1rem;color:var(--text-secondary)">°C</span></div>
+      <div class="pred-horizon">Régression linéaire · IA Python</div>
+      <div class="sparkline-wrap"><canvas id="sparkline"></canvas></div>
+      <div style="margin-top:6px;font-size:0.74rem;" id="pred-trend" class="kpi-trend-stable">--</div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="bottom-row">
+
+    <!-- Relay 1 -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h0a2 2 0 012 2v2H6V5a2 2 0 012-2h0"/>
+          <line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/>
+        </svg>
+        Relais 1 — Climatiseur
+      </div>
+      <div class="relay-list">
+        <div class="relay-item">
+          <div class="relay-header">
+            <div class="relay-name">
+              <div class="relay-indicator" id="r1-dot"></div>
+              GPIO 2 · LED Rouge
+            </div>
+            <span class="relay-state-txt" id="r1-state-txt">Inactif</span>
+          </div>
+          <div class="relay-btns">
+            <button class="btn-relay on" id="r1-on" onclick="cmd(1,'ON')">Activer</button>
+            <button class="btn-relay off" id="r1-off" onclick="cmd(1,'OFF')">Couper</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Relay 2 -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Relais 2 — Alarme
+      </div>
+      <div class="relay-list">
+        <div class="relay-item">
+          <div class="relay-header">
+            <div class="relay-name">
+              <div class="relay-indicator" id="r2-dot"></div>
+              GPIO 4 · LED Verte
+            </div>
+            <span class="relay-state-txt" id="r2-state-txt">Inactif</span>
+          </div>
+          <div class="relay-btns">
+            <button class="btn-relay on" id="r2-on" onclick="cmd(2,'ON')">Activer</button>
+            <button class="btn-relay off" id="r2-off" onclick="cmd(2,'OFF')">Couper</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+        </svg>
+        Historique Temps Réel
+      </div>
+      <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- Full Row -->
+  <div class="full-row">
+
+    <!-- Event Log -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+        Journal des Événements MQTT
+      </div>
+      <ul id="event-log"></ul>
+    </div>
+
+    <!-- System Info -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+        </svg>
+        Infrastructure
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+        <div class="infra-row"><span class="infra-key">Broker</span><span class="infra-val">broker.emqx.io</span></div>
+        <div class="infra-row"><span class="infra-key">MQTT TCP</span><span class="infra-val">:1883</span></div>
+        <div class="infra-row"><span class="infra-key">MQTT TLS</span><span class="infra-val">:8883</span></div>
+        <div class="infra-row"><span class="infra-key">WebSocket</span><span class="infra-val">:8083</span></div>
+        <div class="infra-row"><span class="infra-key">WS TLS</span><span class="infra-val">:8084</span></div>
+        <div class="infra-row"><span class="infra-key">Node-RED</span><span class="infra-val">localhost:1880</span></div>
+        <div class="infra-row"><span class="infra-key">AI Server</span><span class="infra-val">localhost:5000</span></div>
+        <div class="infra-row"><span class="infra-key">Dernier msg</span><span class="infra-val" id="last-msg-time">--</span></div>
+        <div class="infra-row"><span class="infra-key">Messages recus</span><span class="infra-val" id="msg-count">0</span></div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<style>
+.infra-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.76rem;
+}
+.infra-key { color: var(--text-secondary); }
+.infra-val { font-family: 'DM Mono', monospace; color: var(--text-primary); font-size: 0.72rem; }
+</style>
+
+<script>
+// ── MQTT CONFIG (mqtt.js - compatible EMQX 5.x) ────────────────────────────
+const WS_URL    = "ws://localhost:8083/mqtt";  // EMQX local Docker
+const CLIENT_ID = "smarthome_dash_" + Math.random().toString(16).substr(2,8);
+const TOPICS = {
+  dht:     "home/wokwi/sensors/dht",
+  anomaly: "home/wokwi/ai/anomaly",
+  pred:    "home/wokwi/ai/prediction",
+  r1stat:  "home/wokwi/relay1/status",
+  r2stat:  "home/wokwi/relay2/status"
+};
+const TOPIC_R1_CMD = "home/wokwi/relay1/command";
+const TOPIC_R2_CMD = "home/wokwi/relay2/command";
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let msgCount = 0;
+let alarmActive = false;
+let sparkData = [];
+let mqttClient = null;
+
+// ── SPARKLINE ──────────────────────────────────────────────────────────────
+const sparkCtx = document.getElementById('sparkline').getContext('2d');
+const sparkChart = new Chart(sparkCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ data: [], borderColor: 'rgba(96,165,250,0.6)', borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: false }] },
+  options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+});
+
+// ── MAIN CHART ─────────────────────────────────────────────────────────────
+const chartCtx = document.getElementById('main-chart').getContext('2d');
+const mainChart = new Chart(chartCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Temperature (°C)', data: [], borderColor: 'rgba(192,160,98,0.8)', backgroundColor: 'rgba(192,160,98,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+      { label: 'Humidite (%)', data: [], borderColor: 'rgba(96,165,250,0.5)', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.4, borderDash: [4, 4] },
+      { label: 'Seuil Alerte (30°C)', data: [], borderColor: 'rgba(248,113,113,0.3)', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, borderDash: [3, 6] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { intersect: false, mode: 'index' },
+    scales: {
+      x: { display: true, ticks: { color: '#4a5568', font: { size: 10 }, maxTicksLimit: 6 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+      y: { display: true, ticks: { color: '#4a5568', font: { size: 10 }, callback: v => v + ' ' }, grid: { color: 'rgba(255,255,255,0.04)' }, min: 0, max: 50 }
+    },
+    plugins: { legend: { display: true, labels: { color: '#4a5568', font: { size: 10 }, boxWidth: 20, padding: 12 } } }
+  }
+});
+
+function addChart(temp, hum) {
+  const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const ds = mainChart.data;
+  if (ds.labels.length > 80) { ds.labels.shift(); ds.datasets.forEach(d => d.data.shift()); }
+  ds.labels.push(t);
+  ds.datasets[0].data.push(temp);
+  ds.datasets[1].data.push(hum);
+  ds.datasets[2].data.push(30);
+  mainChart.update('none');
+  sparkData.push(temp);
+  if (sparkData.length > 20) sparkData.shift();
+  sparkChart.data.labels = sparkData.map(() => '');
+  sparkChart.data.datasets[0].data = [...sparkData];
+  sparkChart.update('none');
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(title, msg, type) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.innerHTML = '<div class="toast-title">' + title + '</div><div class="toast-msg">' + msg + '</div>';
+  container.appendChild(el);
+  setTimeout(() => { el.style.animation = 'toast-out 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 5000);
+}
+
+// ── LOG ────────────────────────────────────────────────────────────────────
+function addLog(msg, type) {
+  const ul = document.getElementById('event-log');
+  const li = document.createElement('li');
+  li.className = 'log-item';
+  const time = new Date().toLocaleTimeString('fr-FR');
+  li.innerHTML = '<span class="log-time">' + time + '</span><span class="log-msg ' + (type || '') + '">' + msg + '</span>';
+  ul.insertBefore(li, ul.firstChild);
+  if (ul.children.length > 60) ul.removeChild(ul.lastChild);
+}
+
+// ── RELAY STATE ────────────────────────────────────────────────────────────
+function setRelay(num, state) {
+  const on = state === 'ON';
+  document.getElementById('r' + num + '-dot').className = 'relay-indicator' + (on ? ' on' : '');
+  const txt = document.getElementById('r' + num + '-state-txt');
+  txt.textContent = on ? 'Actif' : 'Inactif';
+  txt.className = 'relay-state-txt' + (on ? ' on' : '');
+}
+
+// ── ALARM ──────────────────────────────────────────────────────────────────
+function triggerAlarm(temp, zScore) {
+  if (alarmActive) return;
+  alarmActive = true;
+  document.getElementById('alarm-text').textContent = 'ALERTE — Anomalie : ' + temp + '°C (Z=' + zScore + ')';
+  document.getElementById('alarm-banner').classList.add('active');
+  document.getElementById('card-temp').style.borderColor = 'rgba(248,113,113,0.4)';
+  showToast('Anomalie détectée', 'T=' + temp + '°C  Z=' + zScore, 'alarm');
+  addLog('Anomalie — T=' + temp + '°C  Z=' + zScore, 'alarm');
+}
+function clearAlarm() {
+  alarmActive = false;
+  document.getElementById('alarm-banner').classList.remove('active');
+  document.getElementById('card-temp').style.borderColor = '';
+}
+
+// ── MQTT (mqtt.js — compatible EMQX 5.x) ──────────────────────────────────
+function initMQTT() {
+  document.getElementById('status-dot').className = 'status-dot';
+  document.getElementById('conn-label').textContent = 'Connexion...';
+
+  mqttClient = mqtt.connect(WS_URL, {
+    clientId: CLIENT_ID,
+    keepalive: 30,
+    reconnectPeriod: 5000,
+    connectTimeout: 10000,
+    clean: true,
+    protocolVersion: 4
+  });
+
+  mqttClient.on('connect', () => {
+    document.getElementById('status-dot').className = 'status-dot connected';
+    document.getElementById('conn-label').textContent = 'Connecté — EMQX Local';
+    Object.values(TOPICS).forEach(t => mqttClient.subscribe(t, { qos: 0 }));
+    addLog('Connecté au broker EMQX local (mqtt.js · WS :8083)', 'success');
+    showToast('Connexion établie', 'EMQX Local · WebSocket :8083', 'success');
+  });
+
+  mqttClient.on('reconnect', () => {
+    document.getElementById('status-dot').className = 'status-dot';
+    document.getElementById('conn-label').textContent = 'Reconnexion...';
+    addLog('Tentative de reconnexion MQTT...', '');
+  });
+
+  mqttClient.on('offline', () => {
+    document.getElementById('status-dot').className = 'status-dot error';
+    document.getElementById('conn-label').textContent = 'Hors ligne';
+    addLog('Broker MQTT hors ligne', 'alarm');
+  });
+
+  mqttClient.on('error', (err) => {
+    document.getElementById('status-dot').className = 'status-dot error';
+    document.getElementById('conn-label').textContent = 'Erreur';
+    addLog('Erreur MQTT : ' + err.message, 'alarm');
+    console.error('MQTT error:', err);
+  });
+
+  mqttClient.on('message', (topic, payload) => {
+    try {
+      const d = JSON.parse(payload.toString());
+      msgCount++;
+      document.getElementById('msg-count').textContent = msgCount;
+      document.getElementById('last-msg-time').textContent = new Date().toLocaleTimeString('fr-FR');
+
+      if (topic === TOPICS.dht) {
+        document.getElementById('temp-val').textContent = d.temperature;
+        document.getElementById('hum-val').textContent = d.humidity;
+        document.getElementById('temp-meta').textContent = 'Capteur DHT22 — ' + new Date().toLocaleTimeString('fr-FR');
+        document.getElementById('hum-meta').textContent = 'GPIO 15 — ' + (d.humidity < 40 ? 'Air sec' : d.humidity > 70 ? 'Air humide' : 'Humidité normale');
+        addChart(d.temperature, d.humidity);
+        if (d.relay1) setRelay(1, d.relay1);
+        if (d.relay2) setRelay(2, d.relay2);
+        addLog('ESP32 — T=' + d.temperature + '°C  H=' + d.humidity + '%', '');
+      }
+      else if (topic === TOPICS.anomaly) {
+        const badge = document.getElementById('anomaly-badge');
+        const z = d.score;
+        const zPct = Math.min(100, (z / 4) * 100);
+        document.getElementById('z-fill').style.width = zPct + '%';
+        document.getElementById('z-fill').style.background = z > 2.5 ? 'var(--red)' : z > 1.5 ? 'var(--amber)' : 'var(--green)';
+        document.getElementById('z-val').textContent = z;
+        if (d.anomaly) { badge.className = 'status-badge anomaly'; badge.textContent = 'Anomalie détectée'; triggerAlarm(d.value, z); }
+        else { badge.className = 'status-badge normal'; badge.textContent = 'Etat Normal'; clearAlarm(); }
+      }
+      else if (topic === TOPICS.pred) {
+        const p = d.predicted_temp;
+        document.getElementById('pred-val').textContent = p != null ? p : '--';
+        const cur = parseFloat(document.getElementById('temp-val').textContent) || 0;
+        const trendEl = document.getElementById('pred-trend');
+        if (p > cur + 0.5) { trendEl.textContent = 'Tendance : hausse prévue'; trendEl.className = 'kpi-trend-up'; }
+        else if (p < cur - 0.5) { trendEl.textContent = 'Tendance : baisse prévue'; trendEl.className = 'kpi-trend-down'; }
+        else { trendEl.textContent = 'Tendance : stable'; trendEl.className = 'kpi-trend-stable'; }
+        addLog('IA — Prédiction +5min : ' + p + '°C', 'gold');
+      }
+      else if (topic === TOPICS.r1stat) { setRelay(1, d.state); addLog('Relais 1 — ' + d.state, d.state === 'ON' ? 'success' : ''); }
+      else if (topic === TOPICS.r2stat) { setRelay(2, d.state); addLog('Relais 2 — ' + d.state, d.state === 'ON' ? 'success' : ''); }
+    } catch(e) { console.error('Payload invalide', e); }
+  });
+}
+
+function cmd(relay, state) {
+  if (!mqttClient || !mqttClient.connected) { addLog('Non connecté — impossible d\'envoyer', 'alarm'); return; }
+  const topic = relay === 1 ? TOPIC_R1_CMD : TOPIC_R2_CMD;
+  mqttClient.publish(topic, JSON.stringify({ relay: 'relais' + relay, state: state }), { qos: 1 });
+  addLog('Commande — Relais ' + relay + ' = ' + state, 'gold');
+  showToast('Relais ' + relay, 'Commande ' + state + ' envoyée (QoS 1)', state === 'ON' ? 'success' : '');
+}
+
+initMQTT();
+</script>
+</body>
+</html>

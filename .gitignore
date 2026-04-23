@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+cli_help.txt
+docker-compose.override.yml
+.env
+node_modules/
+.vscode/

@@ -1,0 +1,4 @@
+FROM nodered/node-red:latest
+
+# Installation obligatoire du module Dashboard pour éviter les "unknown: ui_..."
+RUN npm install node-red-dashboard
