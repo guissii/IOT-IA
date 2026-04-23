@@ -117,8 +117,13 @@ print(f"[MQTT] Abonné à :\n  → {TOPIC_RELAY1.decode()}\n  → {TOPIC_RELAY2.
 # ─── Boucle Principale ───────────────────────────────────────────────────────
 last_publish = time.ticks_ms()
 reading_num  = 0
+cooling_offset = 0.0  # Effet climatiseur : diminue la température progressivement
 
-print("\n[SIM] Simulation directe démarrée. Valeurs interactives Wokwi pures...\n")
+print("\n[SIM] Simulation intelligente démarrée.")
+print("  → Relais 1 = Climatiseur (refroidit la pièce)")
+print("  → Relais 2 = Alarme incendie (alerte anomalie)")
+print("  → Auto-activation climatiseur si T > 30°C")
+print("  → Auto-désactivation climatiseur si T < 24°C\n")
 
 try:
     while True:
@@ -133,15 +138,51 @@ try:
                 base_t = dht_sensor.temperature()
                 base_h = dht_sensor.humidity()
 
+                # ─── Simulation réaliste du climatiseur ───────────────
+                # Si le climatiseur (R1) est ON, la température baisse progressivement
+                if global_relay1_state == "ON":
+                    cooling_offset = min(cooling_offset + 0.4, 18.0)
+                else:
+                    # Réchauffement naturel quand climatiseur OFF
+                    if cooling_offset > 0:
+                        cooling_offset = max(cooling_offset - 0.15, 0.0)
+
+                # Appliquer l'effet du climatiseur
+                t = round(base_t - cooling_offset, 1)
+                h = round(base_h, 1)
+
+                # Empêcher les valeurs négatives/aberrantes
+                t = max(5.0, min(60.0, t))
+                h = max(5.0, min(100.0, h))
+
+                # ─── Auto-activation du climatiseur (seuil 30°C) ─────
+                if t > 30.0 and global_relay1_state == "OFF":
+                    relay1_pin.value(1)
+                    global_relay1_state = "ON"
+                    print(f"[AUTO] T={t}°C > 30°C → Climatiseur ACTIVÉ automatiquement!")
+                    client.publish(TOPIC_STATUS1, json.dumps({
+                        "relay": "relais1", "state": "ON"
+                    }))
+
+                elif t < 24.0 and global_relay1_state == "ON" and cooling_offset > 5:
+                    relay1_pin.value(0)
+                    global_relay1_state = "OFF"
+                    print(f"[AUTO] T={t}°C < 24°C → Climatiseur DÉSACTIVÉ (objectif atteint)")
+                    client.publish(TOPIC_STATUS1, json.dumps({
+                        "relay": "relais1", "state": "OFF"
+                    }))
+
+                # ─── Publication MQTT ─────────────────────────────────
                 payload = json.dumps({
-                    "temperature": round(base_t, 1),
-                    "humidity":    round(base_h, 1),
+                    "temperature": t,
+                    "humidity":    h,
                     "relay1":      global_relay1_state,
                     "relay2":      global_relay2_state
                 })
                 client.publish(TOPIC_DHT, payload)
-                
-                print(f"[PUB #{reading_num:3d}] [Direct] {TOPIC_DHT.decode()} → {payload}")
+
+                cool_str = f" [Clim: -{cooling_offset:.1f}°C]" if cooling_offset > 0 else ""
+                print(f"[PUB #{reading_num:3d}] T={t}°C H={h}%{cool_str} R1={global_relay1_state} R2={global_relay2_state}")
 
             except OSError:
                 print("[ERREUR] Lecture DHT22 échouée.")

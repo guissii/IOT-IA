@@ -631,16 +631,63 @@ body {
         Infrastructure
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
-        <div class="infra-row"><span class="infra-key">Broker</span><span class="infra-val">broker.emqx.io</span></div>
+        <div class="infra-row"><span class="infra-key">Broker</span><span class="infra-val">broker.emqx.io (Public)</span></div>
         <div class="infra-row"><span class="infra-key">MQTT TCP</span><span class="infra-val">:1883</span></div>
-        <div class="infra-row"><span class="infra-key">MQTT TLS</span><span class="infra-val">:8883</span></div>
-        <div class="infra-row"><span class="infra-key">WebSocket</span><span class="infra-val">:8083</span></div>
-        <div class="infra-row"><span class="infra-key">WS TLS</span><span class="infra-val">:8084</span></div>
+        <div class="infra-row"><span class="infra-key">WebSocket</span><span class="infra-val">ws://:8083/mqtt</span></div>
         <div class="infra-row"><span class="infra-key">Node-RED</span><span class="infra-val">localhost:1880</span></div>
         <div class="infra-row"><span class="infra-key">AI Server</span><span class="infra-val">localhost:5000</span></div>
         <div class="infra-row"><span class="infra-key">Dernier msg</span><span class="infra-val" id="last-msg-time">--</span></div>
-        <div class="infra-row"><span class="infra-key">Messages recus</span><span class="infra-val" id="msg-count">0</span></div>
+        <div class="infra-row"><span class="infra-key">Messages reçus</span><span class="infra-val" id="msg-count">0</span></div>
       </div>
+    </div>
+
+  </div>
+
+  <!-- ── RAPPORT JOURNALIER ──────────────────────────────────────────── -->
+  <div class="section-divider" style="margin-top:24px;">📊 Rapport Journalier</div>
+  <div class="bottom-row">
+
+    <!-- Statistiques du Jour -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Statistiques Capteurs
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+        <div class="infra-row"><span class="infra-key">Lectures totales</span><span class="infra-val" id="stat-readings">0</span></div>
+        <div class="infra-row"><span class="infra-key">Temp. Min</span><span class="infra-val" id="stat-temp-min">--</span></div>
+        <div class="infra-row"><span class="infra-key">Temp. Max</span><span class="infra-val" id="stat-temp-max">--</span></div>
+        <div class="infra-row"><span class="infra-key">Temp. Moyenne</span><span class="infra-val" id="stat-temp-avg">--</span></div>
+        <div class="infra-row"><span class="infra-key">Hum. Min</span><span class="infra-val" id="stat-hum-min">--</span></div>
+        <div class="infra-row"><span class="infra-key">Hum. Max</span><span class="infra-val" id="stat-hum-max">--</span></div>
+        <div class="infra-row"><span class="infra-key">Hum. Moyenne</span><span class="infra-val" id="stat-hum-avg">--</span></div>
+      </div>
+    </div>
+
+    <!-- Utilisation Équipements -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Utilisation Équipements
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+        <div class="infra-row"><span class="infra-key">🌡️ Climatiseur (R1) — Durée ON</span><span class="infra-val" id="stat-r1-time">00:00:00</span></div>
+        <div class="infra-row"><span class="infra-key">🚨 Alarme (R2) — Durée ON</span><span class="infra-val" id="stat-r2-time">00:00:00</span></div>
+        <div class="infra-row"><span class="infra-key">Activations R1</span><span class="infra-val" id="stat-r1-count">0</span></div>
+        <div class="infra-row"><span class="infra-key">Activations R2</span><span class="infra-val" id="stat-r2-count">0</span></div>
+        <div class="infra-row"><span class="infra-key">Anomalies IA détectées</span><span class="infra-val" id="stat-anomaly-count" style="color:var(--red)">0</span></div>
+        <div class="infra-row"><span class="infra-key">Prédictions effectuées</span><span class="infra-val" id="stat-pred-count">0</span></div>
+      </div>
+    </div>
+
+    <!-- Incidents & Rapport -->
+    <div class="card">
+      <div class="card-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Incidents & Actions Automatiques
+      </div>
+      <ul id="incident-log" style="list-style:none;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;margin-top:8px;"></ul>
+      <button id="btn-gen-report" onclick="generateReport()" style="margin-top:14px;width:100%;padding:10px;border:1px solid var(--border-gold);border-radius:8px;background:var(--gold-dim);color:var(--gold);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;transition:all 0.2s;">📄 Générer Rapport Journalier</button>
     </div>
 
   </div>
@@ -661,8 +708,9 @@ body {
 </style>
 
 <script>
-// ── MQTT CONFIG (mqtt.js - compatible EMQX 5.x) ────────────────────────────
-const WS_URL    = "ws://localhost:8083/mqtt";  // EMQX local Docker
+// ── MQTT CONFIG ─────────────────────────────────────────────────────────────
+// IMPORTANT : On se connecte au MÊME broker public que l'ESP32 Wokwi
+const WS_URL    = "ws://broker.emqx.io:8083/mqtt";
 const CLIENT_ID = "smarthome_dash_" + Math.random().toString(16).substr(2,8);
 const TOPICS = {
   dht:     "home/wokwi/sensors/dht",
@@ -679,6 +727,100 @@ let msgCount = 0;
 let alarmActive = false;
 let sparkData = [];
 let mqttClient = null;
+
+// ── DAILY REPORT STATE ─────────────────────────────────────────────────────
+let dailyStats = {
+  readings: 0, tempMin: Infinity, tempMax: -Infinity, tempSum: 0,
+  humMin: Infinity, humMax: -Infinity, humSum: 0,
+  r1Activations: 0, r2Activations: 0, anomalyCount: 0, predCount: 0,
+  r1TotalSec: 0, r2TotalSec: 0, r1LastOnTime: null, r2LastOnTime: null,
+  r1IsOn: false, r2IsOn: false, incidents: []
+};
+
+// Timer pour compter le temps des relais en temps réel
+setInterval(() => {
+  if (dailyStats.r1IsOn) { dailyStats.r1TotalSec++; document.getElementById('stat-r1-time').textContent = fmtDuration(dailyStats.r1TotalSec); }
+  if (dailyStats.r2IsOn) { dailyStats.r2TotalSec++; document.getElementById('stat-r2-time').textContent = fmtDuration(dailyStats.r2TotalSec); }
+}, 1000);
+
+function fmtDuration(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return [h,m,s].map(v => String(v).padStart(2,'0')).join(':');
+}
+
+function updateDailyStats(temp, hum) {
+  const ds = dailyStats;
+  ds.readings++;
+  ds.tempMin = Math.min(ds.tempMin, temp); ds.tempMax = Math.max(ds.tempMax, temp); ds.tempSum += temp;
+  ds.humMin = Math.min(ds.humMin, hum); ds.humMax = Math.max(ds.humMax, hum); ds.humSum += hum;
+  document.getElementById('stat-readings').textContent = ds.readings;
+  document.getElementById('stat-temp-min').textContent = ds.tempMin.toFixed(1) + ' °C';
+  document.getElementById('stat-temp-max').textContent = ds.tempMax.toFixed(1) + ' °C';
+  document.getElementById('stat-temp-avg').textContent = (ds.tempSum / ds.readings).toFixed(1) + ' °C';
+  document.getElementById('stat-hum-min').textContent = ds.humMin.toFixed(1) + ' %';
+  document.getElementById('stat-hum-max').textContent = ds.humMax.toFixed(1) + ' %';
+  document.getElementById('stat-hum-avg').textContent = (ds.humSum / ds.readings).toFixed(1) + ' %';
+}
+
+function trackRelay(num, state) {
+  const on = state === 'ON';
+  if (num === 1) {
+    if (on && !dailyStats.r1IsOn) { dailyStats.r1Activations++; dailyStats.r1IsOn = true; document.getElementById('stat-r1-count').textContent = dailyStats.r1Activations; addIncident('🌡️ Climatiseur (R1) ACTIVÉ'); }
+    else if (!on && dailyStats.r1IsOn) { dailyStats.r1IsOn = false; addIncident('❄️ Climatiseur (R1) DÉSACTIVÉ — durée ' + fmtDuration(dailyStats.r1TotalSec)); }
+  } else {
+    if (on && !dailyStats.r2IsOn) { dailyStats.r2Activations++; dailyStats.r2IsOn = true; document.getElementById('stat-r2-count').textContent = dailyStats.r2Activations; addIncident('🚨 Alarme (R2) ACTIVÉE'); }
+    else if (!on && dailyStats.r2IsOn) { dailyStats.r2IsOn = false; addIncident('✅ Alarme (R2) désactivée — durée ' + fmtDuration(dailyStats.r2TotalSec)); }
+  }
+}
+
+function addIncident(msg) {
+  const ul = document.getElementById('incident-log');
+  const li = document.createElement('li');
+  li.className = 'log-item';
+  const time = new Date().toLocaleTimeString('fr-FR');
+  li.innerHTML = '<span class="log-time">' + time + '</span><span class="log-msg gold">' + msg + '</span>';
+  ul.insertBefore(li, ul.firstChild);
+  dailyStats.incidents.push({ time, msg });
+}
+
+function generateReport() {
+  const ds = dailyStats;
+  const now = new Date();
+  let txt = '═══════════════════════════════════════════════════════════════\n';
+  txt += '  RAPPORT JOURNALIER — SmartHome AI Monitor — ENSA FES\n';
+  txt += '  Date : ' + now.toLocaleDateString('fr-FR') + ' — ' + now.toLocaleTimeString('fr-FR') + '\n';
+  txt += '═══════════════════════════════════════════════════════════════\n\n';
+  txt += '── STATISTIQUES CAPTEURS ──────────────────────────────────────\n';
+  txt += '  Lectures DHT22      : ' + ds.readings + '\n';
+  txt += '  Température Min     : ' + (ds.tempMin === Infinity ? '--' : ds.tempMin.toFixed(1) + ' °C') + '\n';
+  txt += '  Température Max     : ' + (ds.tempMax === -Infinity ? '--' : ds.tempMax.toFixed(1) + ' °C') + '\n';
+  txt += '  Température Moyenne : ' + (ds.readings > 0 ? (ds.tempSum/ds.readings).toFixed(1) + ' °C' : '--') + '\n';
+  txt += '  Humidité Min        : ' + (ds.humMin === Infinity ? '--' : ds.humMin.toFixed(1) + ' %') + '\n';
+  txt += '  Humidité Max        : ' + (ds.humMax === -Infinity ? '--' : ds.humMax.toFixed(1) + ' %') + '\n';
+  txt += '  Humidité Moyenne    : ' + (ds.readings > 0 ? (ds.humSum/ds.readings).toFixed(1) + ' %' : '--') + '\n\n';
+  txt += '── UTILISATION ÉQUIPEMENTS ────────────────────────────────────\n';
+  txt += '  Climatiseur (R1)\n';
+  txt += '    Activations       : ' + ds.r1Activations + '\n';
+  txt += '    Durée totale ON   : ' + fmtDuration(ds.r1TotalSec) + '\n';
+  txt += '  Alarme (R2)\n';
+  txt += '    Activations       : ' + ds.r2Activations + '\n';
+  txt += '    Durée totale ON   : ' + fmtDuration(ds.r2TotalSec) + '\n\n';
+  txt += '── INTELLIGENCE ARTIFICIELLE ──────────────────────────────────\n';
+  txt += '  Anomalies détectées : ' + ds.anomalyCount + '\n';
+  txt += '  Prédictions faites  : ' + ds.predCount + '\n\n';
+  txt += '── JOURNAL DES INCIDENTS (' + ds.incidents.length + ') ─────────────────────────\n';
+  ds.incidents.forEach(i => { txt += '  [' + i.time + '] ' + i.msg + '\n'; });
+  txt += '\n═══════════════════════════════════════════════════════════════\n';
+  txt += '  Fin du rapport — Généré automatiquement par SmartHome AI    \n';
+  txt += '═══════════════════════════════════════════════════════════════\n';
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'rapport_smarthome_' + now.toISOString().slice(0,10) + '.txt';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Rapport généré', 'Fichier téléchargé avec succès', 'success');
+  addLog('Rapport journalier généré et téléchargé', 'gold');
+}
 
 // ── SPARKLINE ──────────────────────────────────────────────────────────────
 const sparkCtx = document.getElementById('sparkline').getContext('2d');
@@ -789,10 +931,10 @@ function initMQTT() {
 
   mqttClient.on('connect', () => {
     document.getElementById('status-dot').className = 'status-dot connected';
-    document.getElementById('conn-label').textContent = 'Connecté — EMQX Local';
+    document.getElementById('conn-label').textContent = 'Connecté — broker.emqx.io';
     Object.values(TOPICS).forEach(t => mqttClient.subscribe(t, { qos: 0 }));
-    addLog('Connecté au broker EMQX local (mqtt.js · WS :8083)', 'success');
-    showToast('Connexion établie', 'EMQX Local · WebSocket :8083', 'success');
+    addLog('Connecté au broker EMQX Public (mqtt.js · WS :8083)', 'success');
+    showToast('Connexion établie', 'broker.emqx.io · WebSocket :8083', 'success');
   });
 
   mqttClient.on('reconnect', () => {
@@ -827,9 +969,10 @@ function initMQTT() {
         document.getElementById('temp-meta').textContent = 'Capteur DHT22 — ' + new Date().toLocaleTimeString('fr-FR');
         document.getElementById('hum-meta').textContent = 'GPIO 15 — ' + (d.humidity < 40 ? 'Air sec' : d.humidity > 70 ? 'Air humide' : 'Humidité normale');
         addChart(d.temperature, d.humidity);
-        if (d.relay1) setRelay(1, d.relay1);
-        if (d.relay2) setRelay(2, d.relay2);
-        addLog('ESP32 — T=' + d.temperature + '°C  H=' + d.humidity + '%', '');
+        updateDailyStats(d.temperature, d.humidity);
+        if (d.relay1) { setRelay(1, d.relay1); trackRelay(1, d.relay1); }
+        if (d.relay2) { setRelay(2, d.relay2); trackRelay(2, d.relay2); }
+        addLog('ESP32 — T=' + d.temperature + '°C  H=' + d.humidity + '% R1=' + (d.relay1||'?') + ' R2=' + (d.relay2||'?'), '');
       }
       else if (topic === TOPICS.anomaly) {
         const badge = document.getElementById('anomaly-badge');
@@ -838,8 +981,13 @@ function initMQTT() {
         document.getElementById('z-fill').style.width = zPct + '%';
         document.getElementById('z-fill').style.background = z > 2.5 ? 'var(--red)' : z > 1.5 ? 'var(--amber)' : 'var(--green)';
         document.getElementById('z-val').textContent = z;
-        if (d.anomaly) { badge.className = 'status-badge anomaly'; badge.textContent = 'Anomalie détectée'; triggerAlarm(d.value, z); }
-        else { badge.className = 'status-badge normal'; badge.textContent = 'Etat Normal'; clearAlarm(); }
+        if (d.anomaly) {
+          badge.className = 'status-badge anomaly'; badge.textContent = 'Anomalie détectée';
+          triggerAlarm(d.value, z);
+          dailyStats.anomalyCount++;
+          document.getElementById('stat-anomaly-count').textContent = dailyStats.anomalyCount;
+          addIncident('⚠️ ANOMALIE IA : T=' + d.value + '°C, Score Z=' + z);
+        } else { badge.className = 'status-badge normal'; badge.textContent = 'Etat Normal'; clearAlarm(); }
       }
       else if (topic === TOPICS.pred) {
         const p = d.predicted_temp;
@@ -849,10 +997,12 @@ function initMQTT() {
         if (p > cur + 0.5) { trendEl.textContent = 'Tendance : hausse prévue'; trendEl.className = 'kpi-trend-up'; }
         else if (p < cur - 0.5) { trendEl.textContent = 'Tendance : baisse prévue'; trendEl.className = 'kpi-trend-down'; }
         else { trendEl.textContent = 'Tendance : stable'; trendEl.className = 'kpi-trend-stable'; }
+        dailyStats.predCount++;
+        document.getElementById('stat-pred-count').textContent = dailyStats.predCount;
         addLog('IA — Prédiction +5min : ' + p + '°C', 'gold');
       }
-      else if (topic === TOPICS.r1stat) { setRelay(1, d.state); addLog('Relais 1 — ' + d.state, d.state === 'ON' ? 'success' : ''); }
-      else if (topic === TOPICS.r2stat) { setRelay(2, d.state); addLog('Relais 2 — ' + d.state, d.state === 'ON' ? 'success' : ''); }
+      else if (topic === TOPICS.r1stat) { setRelay(1, d.state); trackRelay(1, d.state); addLog('Relais 1 (Climatiseur) — ' + d.state, d.state === 'ON' ? 'success' : ''); }
+      else if (topic === TOPICS.r2stat) { setRelay(2, d.state); trackRelay(2, d.state); addLog('Relais 2 (Alarme) — ' + d.state, d.state === 'ON' ? 'success' : ''); }
     } catch(e) { console.error('Payload invalide', e); }
   });
 }
