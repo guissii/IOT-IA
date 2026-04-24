@@ -382,7 +382,19 @@
         "datatype": "json",
         "broker": "broker-emqx",
         "x": 140, "y": 80,
-        "wires": [["fn-rule-temp", "fn-rule-hum"]]
+        "wires": [["fn-rule-temp"]]
+    },
+    {
+        "id": "mqtt-in-anomaly-auto",
+        "type": "mqtt in",
+        "z": "tab-automation",
+        "name": "SUBSCRIBE — Anomalie IA",
+        "topic": "home/wokwi/ai/anomaly",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "broker-emqx",
+        "x": 140, "y": 160,
+        "wires": [["fn-rule-anomaly"]]
     },
 
     {
@@ -420,11 +432,11 @@
     },
 
     {
-        "id": "fn-rule-hum",
+        "id": "fn-rule-anomaly",
         "type": "function",
         "z": "tab-automation",
-        "name": "⚙ Règle : Hum < 35% → Relais 2 AUTO",
-        "func": "var H = msg.payload.humidity;\nvar prevState = global.get('r2_auto_state') || 'OFF';\n\nif (H < 35 && prevState !== 'ON') {\n    global.set('r2_auto_state', 'ON');\n    node.warn('AUTO: Humidité ' + H + '% < 35% — Relais 2 ON (humidificateur)');\n    return {\n        payload: { relay: 'relais2', state: 'ON', auto: true, reason: 'H=' + H + '% < 35%' },\n        topic: 'home/wokwi/relay2/command'\n    };\n} else if (H >= 40 && prevState !== 'OFF') {\n    global.set('r2_auto_state', 'OFF');\n    node.warn('AUTO: Humidité ' + H + '% >= 40% — Relais 2 OFF');\n    return {\n        payload: { relay: 'relais2', state: 'OFF', auto: true, reason: 'H=' + H + '% >= 40%' },\n        topic: 'home/wokwi/relay2/command'\n    };\n}\nreturn null;",
+        "name": "⚙ Règle : Anomalie IA → Relais 2 (Alarme)",
+        "func": "var isAnomaly = msg.payload.anomaly;\nvar zScore = msg.payload.score;\nvar prevState = global.get('r2_auto_state') || 'OFF';\n\nif (isAnomaly && prevState !== 'ON') {\n    global.set('r2_auto_state', 'ON');\n    node.warn('AUTO: Anomalie Détectée (Z=' + zScore + ') — Relais 2 ON (ALARME)');\n    return {\n        payload: { relay: 'relais2', state: 'ON', auto: true, reason: 'Anomalie IA (Z=' + zScore + ')' },\n        topic: 'home/wokwi/relay2/command'\n    };\n} else if (!isAnomaly && prevState !== 'OFF') {\n    global.set('r2_auto_state', 'OFF');\n    node.warn('AUTO: Situation Normale — Relais 2 OFF');\n    return {\n        payload: { relay: 'relais2', state: 'OFF', auto: true, reason: 'Retour à la normale' },\n        topic: 'home/wokwi/relay2/command'\n    };\n}\nreturn null;",
         "outputs": 1,
         "x": 450, "y": 160,
         "wires": [["mqtt-out-auto-relay2", "debug-auto-r2", "text-auto-log"]]
@@ -490,20 +502,7 @@
         "payload": "{\"temperature\":24,\"humidity\":55}",
         "payloadType": "json",
         "x": 140, "y": 330,
-        "wires": [["fn-rule-temp", "fn-rule-hum"]]
-    },
-    {
-        "id": "inject-test-low-hum",
-        "type": "inject",
-        "z": "tab-automation",
-        "name": "TEST: Inject H=25% (sécheresse)",
-        "props": [{"p": "payload"}],
-        "repeat": "",
-        "once": false,
-        "payload": "{\"temperature\":24,\"humidity\":25}",
-        "payloadType": "json",
-        "x": 140, "y": 380,
-        "wires": [["fn-rule-temp", "fn-rule-hum"]]
+        "wires": [["fn-rule-temp"]]
     },
 
     {
